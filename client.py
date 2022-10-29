@@ -19,7 +19,10 @@ def send(msg):
 
 def main():
     client.connect(ADDR)
-    send("Hello")
+    send(input())
+    while True:
+        data = client.recv(HEADER).decode(FORMAT)
+        print(data)
 
 if __name__ == '__main__':
     main()
