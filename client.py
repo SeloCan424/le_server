@@ -1,57 +1,37 @@
-import socket
 import threading
+import socket
 
-my_dict = {'name': "P1", 'x': 0, 'y': 0}
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.connect(('127.0.0.1', 8001))
 
-class Client:
-    def __init__(self, host, port) -> None:
-        # Choosing Nickname
-        self.nickname = input("Choose your nickname: ")
+player = 1
+x = 0
+y = 0
 
-        # Connection Data
-        self.host = host
-        self.port = port
+def client_receive():
+    while True:
+        try:
+            message = client.recv(1024).decode('utf-8')
+            message = dict((x.strip(), int(y.strip()))
+                for x, y in (element.split('-')
+                    for element in message.split(', ')))
+            print(message)
+        except:
+            print('Error!')
+            client.close()
+            break
 
-        # Initializing Client
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    # Receiving Messages From Server
-    def receive(self):
-        while True:
-            try:
-                # Receive Message From Server
-                # If 'NICK' Send Nickname
-                message = self.client.recv(1024).decode('ascii')
-                if message == 'NICK':
-                    self.client.sendall(self.nickname.encode('ascii'))
-                else:
-                    print(message)
-            except:
-                # Close Connection When Error
-                print("An error occured!")
-                self.client.close()
-                break
-
-    # Sending Messages To Server
-    def write(self):
-        while True:
-            message = '{}: {}'.format(self.nickname, input(''))
-            self.client.sendall(message.encode('ascii'))
-
-    def run(self):
-        # Connecting To Server
-        self.client.connect((self.host, self.port))
-
-        # Starting Threads For Listening And Writing
-        receive_thread = threading.Thread(target=self.receive)
-        receive_thread.start()
-
-        write_thread = threading.Thread(target=self.write)
-        write_thread.start()
+def client_send():
+    #while True:
+    message = f"player - {player}, x - {x}, y - {y}"
+    client.send(message.encode('utf-8'))
 
 def main():
-    client = Client('127.0.0.1', 8001)
-    client.run()
+    receive_thread = threading.Thread(target=client_receive)
+    receive_thread.start()
+
+    send_thread = threading.Thread(target=client_send)
+    send_thread.start()
 
 if __name__ == '__main__':
     main()
