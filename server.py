@@ -1,40 +1,41 @@
+from mimetypes import init
 import socket
+import string
 import threading
 
-host = '127.0.0.1'
-port = 8001
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind((host, port))
-server.listen()
-clients = []
+class Server:
+    def __init__(self, host: string, port: int):
+        self.host = host
+        self.port = port
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.bind((host, port))
+        self.server.listen()
+        self.clients = []
 
-def broadcast(message):
-    for client in clients:
-        client.send(message)
+    def broadcast(self, message):
+        for client in self.clients:
+            client.send(message)
 
-# Function to handle clients'connections
-def handle_client(client):
-    while True:
-        try:
-            message = client.recv(1024)
-            broadcast(message)
-        except:
-            clients.remove(client)
-            client.close()
-            break
+    # Function to handle clients'connections
+    def handle_client(self, client):
+        while True:
+            try:
+                message = client.recv(1024)
+                self.broadcast(message)
+            except:
+                self.clients.remove(client)
+                client.close()
+                break
 
-# Main function to receive the clients connection
-def receive():
-    while True:
-        print('Server is running and listening ...')
-        client, address = server.accept()
-        print(f'Connection is established with {str(address)}')
-        clients.append(client)
-        thread = threading.Thread(target=handle_client, args=(client,))
-        thread.start()
+    # Main function to receive the clients connection
+    def run(self):
+        while True:
+            print('Server is running and listening ...')
+            client, address = self.server.accept()
+            print(f'Connection is established with {str(address)}')
+            self.clients.append(client)
+            thread = threading.Thread(target=self.handle_client, args=(client,))
+            thread.start()
 
-def main():
-    receive()
-
-if __name__ == "__main__":
-    main()
+server = Server('127.0.0.1', 8001)
+server.run()
