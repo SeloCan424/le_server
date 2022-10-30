@@ -1,28 +1,42 @@
 import socket
+import threading
 
-HEADER = 64
-HOST = "192.168.188.38"
-PORT = 8000
-ADDR = (HOST, PORT)
-FORMAT = 'utf-8'
-DISCONNECT_MESSAGE = "!DISCONNECT!"
+# Choosing Nickname
+nickname = input("Choose your nickname: ")
 
+# Connecting To Server
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.connect(('127.0.0.1', 8001))
 
-def send(msg):
-    message = msg.encode(FORMAT)
-    msg_lenght = len(message)
-    send_lenght = str(msg_lenght).encode(FORMAT)
-    send_lenght += b' ' * (HEADER - len(send_lenght))
-    client.send(send_lenght)
-    client.send(message)
+def receive():
+    while True:
+        try:
+            # Receive Message From Server
+            # If 'NICK' Send Nickname
+            message = client.recv(1024).decode('ascii')
+            if message == 'NICK':
+                client.send(nickname.encode('ascii'))
+            else:
+                print(message)
+        except:
+            # Close Connection When Error
+            print("An error occured!")
+            client.close()
+            break
+
+# Sending Messages To Server
+def write():
+    while True:
+        message = '{}: {}'.format(nickname, input(''))
+        client.send(message.encode('ascii'))
 
 def main():
-    client.connect(ADDR)
-    send(input())
-    while True:
-        data = client.recv(HEADER).decode(FORMAT)
-        print(data)
+    # Starting Threads For Listening And Writing
+    receive_thread = threading.Thread(target=receive)
+    receive_thread.start()
+
+    write_thread = threading.Thread(target=write)
+    write_thread.start()
 
 if __name__ == '__main__':
     main()

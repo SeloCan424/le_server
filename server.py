@@ -1,48 +1,66 @@
 import socket
 import threading
+import keyboard
 
-HEADER = 64
-HOST = socket.gethostbyname(socket.gethostname())
-PORT = 8000
-ADDR = (HOST, PORT)
-FORMAT = 'utf-8'
-DISCONNECT_MESSAGE = "!DISCONNECT!"
+# Connection Data
+host = '127.0.0.1'
+port = 8001
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(ADDR)
+# Starting Server
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind((host, port))
+server.listen()
 
+# Lists For Clients and Their Nicknames
 clients = []
+nicknames = []
 
-def handle_client(conn, addr):
-    print(f"[NEW CONNECTION] {addr} connected")
+# Sending Messages To All Connected Clients
+def broadcast(message):
+    for client in clients:
+        client.send(message)
 
-    connected = True
-    while connected:
-        data_lenght = conn.recv(HEADER).decode(FORMAT)
-        if data_lenght:
-            data_lenght = int(data_lenght)
-            data = conn.recv(data_lenght).decode(FORMAT)
+# Handling Messages From Clients
+def handle(client):
+    while True:
+        try:
+            # Broadcasting Messages
+            message = client.recv(1024)
+            broadcast(message)
+        except:
+            # Removing And Closing Clients
+            index = clients.index(client)
+            clients.remove(client)
+            client.close()
+            nickname = nicknames[index]
+            broadcast('{} left!'.format(nickname).encode('ascii'))
+            nicknames.remove(nickname)
+            break
 
-            if data == DISCONNECT_MESSAGE:
-                connected = False
-    
-            print(f"[{addr}] {data}")
-            for client in clients:
-                client.send(data.encode(FORMAT))
-    conn.close()
-    print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
+# Receiving / Listening Function
+def run():
+    while not keyboard.read_key() == "ctrl":
+        # Accept Connection
+        client, address = server.accept()
+        print("Connected with {}".format(str(address)))
+
+        # Request And Store Nickname
+        client.send('NICK'.encode('ascii'))
+        nickname = client.recv(1024).decode('ascii')
+        nicknames.append(nickname)
+        clients.append(client)
+
+        # Print And Broadcast Nickname
+        print("Nickname is {}".format(nickname))
+        broadcast("{} joined!".format(nickname).encode('ascii'))
+        client.send('Connected to server!'.encode('ascii'))
+
+        # Start Handling Thread For Client
+        thread = threading.Thread(target=handle, args=(client,))
+        thread.start()
 
 def main():
-    print("[STARTING] Server is starting ...")
-    s.listen()
-    print(f"[LISTENING] The server is listening on {HOST}")
-    while True:
-        conn, addr = s.accept()
-        clients.append(conn)
-        thread = threading.Thread(target=handle_client, args=(conn, addr))
-        thread.start()
-        print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
-        
+    run()
 
 if __name__ == '__main__':
     main()
